@@ -139,6 +139,10 @@ human/forensic record inside each bundle.
 - Decode/record at 250–500 kSps, not at the full source rate.
 - Run URH/auto-detection offline on bursts/windows, not continuously.
 
+## Live validation
+
+`FFT Q` / `FFT V` were validated against a running gqrx built from `feature/gqrx-pipeline-integration`, using a small synthetic CF32 file source and the Gr-audio backend. `scan.py` parsed the response and found the synthetic +150 kHz tone at 433.9138 MHz. See `context/GQRX_PIPELINE.md` §9.5.
+
 ## Tests
 
 ```sh
