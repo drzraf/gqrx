@@ -142,8 +142,7 @@ human/forensic record inside each bundle.
 ## Tests
 
 ```sh
-cd tools/gqrx-pipeline
-python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s tools/gqrx-pipeline/tests -v
 ```
 
 No hardware, no remote connection, and no large IQ files are required.
