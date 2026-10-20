@@ -102,6 +102,8 @@ public slots:
     void stopAudioRecorder();
     void startIqRecorder(QString unused1, QString unused2);
     void stopIqRecorder();
+    void startEvidenceRecorder();
+    void stopEvidenceRecorder();
     bool setGain(QString name, double gain);
     void setRDSstatus(bool enabled);
     void rdsPI(QString program_id);
@@ -120,6 +122,8 @@ signals:
     void stopAudioRecorderEvent();
     void startIqRecorderEvent();
     void stopIqRecorderEvent();
+    void startEvidenceRecorderEvent();
+    void stopEvidenceRecorderEvent();
     void gainChanged(QString name, double value);
     void dspChanged(bool value);
     void newRDSmode(bool value);
@@ -154,6 +158,7 @@ private:
     QString     rds_radiotext;     /*!< RDS Radiotext */
     bool        audio_recorder_status; /*!< Audio recording enabled */
     bool        iq_recorder_status;    /*!< IQ recording enabled */
+    bool        evidence_recorder_status; /*!< Evidence recording armed */
     bool        receiver_running;  /*!< Whether the receiver is running or not */
     bool        hamlib_compatible;
     gain_list_t gains;             /*!< Possible and current gain settings */
