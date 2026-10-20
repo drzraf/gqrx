@@ -77,6 +77,33 @@ def copy_limited(src: Path, dst: Path, max_bytes: int) -> int:
     return written
 
 
+def cleanup_root(root: Path, retention_days: float, now: Optional[datetime] = None) -> list[Path]:
+    """Delete old session directories under root, preserving directories with KEEP."""
+    root = Path(root).expanduser()
+    if not root.exists() or retention_days <= 0:
+        return []
+    now = now or utc_now()
+    cutoff = now - timedelta(days=float(retention_days))
+    removed: list[Path] = []
+    for session_dir in sorted(root.iterdir()):
+        if not session_dir.is_dir() or session_dir.name.startswith("."):
+            continue
+        if not (session_dir / "session.json").exists():
+            continue
+        if (session_dir / "KEEP").exists():
+            continue
+        created = None
+        try:
+            payload = json.loads((session_dir / "session.json").read_text(encoding="utf-8"))
+            created = datetime.fromisoformat(payload["created_at"])
+        except (OSError, KeyError, ValueError, TypeError):
+            created = datetime.fromtimestamp(session_dir.stat().st_mtime, tz=timezone.utc)
+        if created < cutoff:
+            shutil.rmtree(session_dir)
+            removed.append(session_dir)
+    return removed
+
+
 class Session:
     def __init__(
         self,
@@ -105,9 +132,12 @@ class Session:
         retention_days: float = 7.0,
         metadata: Optional[Dict[str, Any]] = None,
         moment: Optional[datetime] = None,
+        cleanup: bool = True,
     ) -> "Session":
         root = Path(root).expanduser()
         root.mkdir(parents=True, exist_ok=True)
+        if cleanup:
+            cleanup_root(root, retention_days, moment)
         stamp = utc_stamp(moment)
         path = root / stamp
         suffix = 1

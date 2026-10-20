@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import os
 import tempfile
 import time
@@ -68,6 +72,22 @@ class SessionTest(unittest.TestCase):
         os.utime(old, (old_time, old_time))
         os.utime(kept, (old_time, old_time))
         removed = sess.cleanup_expired()
+        self.assertIn(old, removed)
+        self.assertNotIn(kept, removed)
+        self.assertFalse(old.exists())
+        self.assertTrue(kept.exists())
+
+    def test_cleanup_root_removes_old_sessions_and_keeps_marked(self):
+        old = self.root / "old-session"
+        kept = self.root / "kept-session"
+        for path in (old, kept):
+            path.mkdir()
+            created = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat()
+            (path / "session.json").write_text('{"created_at": "' + created + '"}')
+            old_time = time.time() - 2 * 86400
+            os.utime(path, (old_time, old_time))
+        (kept / "KEEP").write_text("")
+        removed = session_mod.cleanup_root(self.root, retention_days=1)
         self.assertIn(old, removed)
         self.assertNotIn(kept, removed)
         self.assertFalse(old.exists())
