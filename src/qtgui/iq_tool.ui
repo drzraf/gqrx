@@ -145,6 +145,32 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="autoButton">
+       <property name="minimumSize">
+        <size>
+         <width>32</width>
+         <height>32</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Automatically record short I/Q bursts above the squelch</string>
+       </property>
+       <property name="text">
+        <string>&amp;Auto</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../resources/icons.qrc">
+         <normaloff>:/icons/icons/record.svg</normaloff>:/icons/icons/record.svg</iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="playButton">
        <property name="minimumSize">
         <size>

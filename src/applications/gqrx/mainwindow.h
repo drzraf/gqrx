@@ -120,6 +120,7 @@ private:
     QTimer   *rds_timer;
     quint64  d_last_fft_ms;
     float    d_avg_fft_rate;
+    quint64  d_last_evidence_started;
     bool     d_frame_drop;
 
     receiver *rx;
@@ -197,6 +198,8 @@ private slots:
     /* I/Q playback and recording*/
     void startIqRecording(const QString& recdir, const QString& format);
     void stopIqRecording();
+    void startEvidenceRecording(const QString& recdir, const QString& format);
+    void stopEvidenceRecording();
     void startIqPlayback(const QString& filename, float samprate, qint64 center_freq);
     void stopIqPlayback();
     void seekIqFile(qint64 seek_pos);

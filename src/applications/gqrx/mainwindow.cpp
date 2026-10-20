@@ -72,7 +72,8 @@ MainWindow::MainWindow(const QString& cfgfile, bool edit_conf, QWidget *parent) 
     d_fftWindowType(0),
     d_fftNormalizeEnergy(false),
     d_have_audio(true),
-    dec_afsk1200(nullptr)
+    dec_afsk1200(nullptr),
+    d_last_evidence_started(0)
 {
     ui->setupUi(this);
     BandPlan::create();
@@ -323,6 +324,10 @@ MainWindow::MainWindow(const QString& cfgfile, bool edit_conf, QWidget *parent) 
     connect(iq_tool, SIGNAL(startRecording(QString, QString)), remote, SLOT(startIqRecorder(QString, QString)));
     connect(iq_tool, SIGNAL(stopRecording()), this, SLOT(stopIqRecording()));
     connect(iq_tool, SIGNAL(stopRecording()), remote, SLOT(stopIqRecorder()));
+    connect(iq_tool, SIGNAL(startEvidence(QString, QString)), this, SLOT(startEvidenceRecording(QString, QString)));
+    connect(iq_tool, SIGNAL(startEvidence(QString, QString)), remote, SLOT(startEvidenceRecorder()));
+    connect(iq_tool, SIGNAL(stopEvidence()), this, SLOT(stopEvidenceRecording()));
+    connect(iq_tool, SIGNAL(stopEvidence()), remote, SLOT(stopEvidenceRecorder()));
     connect(iq_tool, SIGNAL(startPlayback(QString,float,qint64)), this, SLOT(startIqPlayback(QString,float,qint64)));
     connect(iq_tool, SIGNAL(stopPlayback()), this, SLOT(stopIqPlayback()));
     connect(iq_tool, SIGNAL(seek(qint64)), this,SLOT(seekIqFile(qint64)));
@@ -344,6 +349,8 @@ MainWindow::MainWindow(const QString& cfgfile, bool edit_conf, QWidget *parent) 
     connect(remote, SIGNAL(stopAudioRecorderEvent()), uiDockAudio, SLOT(stopAudioRecorder()));
     connect(remote, SIGNAL(startIqRecorderEvent()), iq_tool, SLOT(startIqRecorder()));
     connect(remote, SIGNAL(stopIqRecorderEvent()), iq_tool, SLOT(stopIqRecorder()));
+    connect(remote, SIGNAL(startEvidenceRecorderEvent()), iq_tool, SLOT(startEvidenceRecorder()));
+    connect(remote, SIGNAL(stopEvidenceRecorderEvent()), iq_tool, SLOT(stopEvidenceRecorder()));
     connect(ui->plotter, SIGNAL(newFilterFreq(int, int)), remote, SLOT(setPassband(int, int)));
     connect(remote, SIGNAL(newPassband(int)), this, SLOT(setPassband(int)));
     connect(remote, SIGNAL(gainChanged(QString, double)), uiDockInputCtl, SLOT(setGain(QString,double)));
@@ -1477,6 +1484,18 @@ void MainWindow::meterTimeout()
     level = rx->get_signal_pwr();
     ui->sMeter->setLevel(level);
     remote->setSignalLevel(level);
+
+    const squelch_iq_stats evidence = rx->get_evidence_stats();
+    if (evidence.started > d_last_evidence_started)
+    {
+        d_last_evidence_started = evidence.started;
+        if (!evidence.last_file.empty())
+        {
+            const QFileInfo info(QString::fromStdString(evidence.last_file));
+            const QString shot = info.dir().filePath(info.completeBaseName() + "_screenshot.png");
+            ui->plotter->grab().save(shot);
+        }
+    }
 }
 
 /** Baseband FFT plot timeout. */
@@ -1715,6 +1734,49 @@ void MainWindow::stopIqRecording()
         ui->statusBar->showMessage(tr("Error stopping I/Q recoder"));
     else
         ui->statusBar->showMessage(tr("I/Q data recoding stopped"), 5000);
+}
+
+/** Arm squelch-gated evidence recording. */
+void MainWindow::startEvidenceRecording(const QString& recdir, const QString& format)
+{
+    qDebug() << __func__;
+
+    squelch_iq_config cfg;
+    cfg.directory = recdir.toStdString();
+    cfg.prefix = "gqrx_evt";
+    cfg.sample_rate_hz = rx->get_input_rate() / (double)rx->get_input_decim();
+    cfg.center_freq_hz = rx->get_rf_freq();
+    cfg.threshold_db = (float)uiDockRxOpt->getSqlLevel();
+    if (cfg.threshold_db <= -149.0f)
+        cfg.threshold_db = -80.0f; // squelch disabled; use a sane noise trigger
+    cfg.trigger_ms = 0.2;
+    cfg.pre_roll_ms = 250.0;
+    cfg.hangover_ms = 500.0;
+    cfg.min_event_ms = 50.0;
+    cfg.max_segment_s = 30.0;
+    cfg.min_gap_ms = 1000.0;
+    cfg.sigmf = (format == "SigMF");
+
+    if (rx->start_evidence_recording(cfg) != receiver::STATUS_OK)
+    {
+        iq_tool->cancelEvidence();
+        ui->statusBar->showMessage(tr("Error starting evidence recorder"), 5000);
+        return;
+    }
+
+    ui->statusBar->showMessage(
+        tr("Evidence recorder armed: threshold %1 dBFS, pre-roll %2 ms")
+            .arg(cfg.threshold_db, 0, 'f', 1)
+            .arg(cfg.pre_roll_ms, 0, 'f', 0),
+        5000);
+}
+
+/** Disarm squelch-gated evidence recording. */
+void MainWindow::stopEvidenceRecording()
+{
+    qDebug() << __func__;
+    rx->stop_evidence_recording();
+    ui->statusBar->showMessage(tr("Evidence recording stopped"), 5000);
 }
 
 void MainWindow::startIqPlayback(const QString& filename, float samprate, qint64 center_freq)
