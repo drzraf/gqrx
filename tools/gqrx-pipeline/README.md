@@ -23,6 +23,7 @@ The optional IQ segment is then used by rtl_433/URH for decoding.
 | `session.py` | session directory, JSONL index, quota, retention |
 | `scan.py` | FFT scan when `FFT Q`/`FFT V` is available; poll fallback |
 | `monitor.py` | adaptive level trigger + evidence capture |
+| `rotate.py` | bounded continuous rotation of gqrx IQ/audio recordings |
 | `evidence.py` | evidence bundle builder |
 | `screenshot.py` | screenshot-wrapper / grim / X11 capture |
 | `decode.py` | thin rtl_433 wrapper for CF32/CU8/CS16 files |
@@ -81,7 +82,25 @@ python3 tools/gqrx-pipeline/monitor.py \
 
 `8` bytes/sample = CF32 (gqrx master); `2` = CU8 (with PR #1013); `4` = CS16.
 
-### 3. Scan without retuning per bin
+### 3. Continuous rotation (bounded storage)
+
+```sh
+python3 tools/gqrx-pipeline/rotate.py \
+  --source-dir ~/gqrx-recordings \
+  --mode iq --rate 250000 --freq 433900000 \
+  --segment-seconds 600 --total-seconds 86400 \
+  --quota-gb 1 --bytes-per-sample 8
+```
+
+- Rotates the existing gqrx recorder every `--segment-seconds`.
+- Moves completed files into the session and records size/time in `index.jsonl`.
+- Stops at `--total-seconds` or when the session quota is reached.
+- gqrx filenames have 1-second resolution and append on collision, so keep
+  segments at least a couple of seconds and leave `--min-start-gap` at ≥1.1 s.
+- This is a stopgap for continuous capture; the native pre-roll recorder (P2)
+  removes the inter-segment gap.
+
+### 4. Scan without retuning per bin
 
 If gqrx has PR #1458 (`FFT Q`/`FFT V`):
 
@@ -95,7 +114,7 @@ python3 tools/gqrx-pipeline/scan.py \
 Without PR #1458, `--mode auto` falls back to `F` + `l STRENGTH` polling
 (`--mode poll`), which is slower and coarser.
 
-### 4. Decode a recording
+### 5. Decode a recording
 
 ```sh
 python3 tools/gqrx-pipeline/decode.py \
