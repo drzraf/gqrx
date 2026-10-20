@@ -99,13 +99,17 @@ Supported commands:
       W:<target_bw_hz>  Target bin width [Hz]. Adjacent native FFT
                         bins are power-averaged to produce wider
                         output bins.  Defaults to the channel filter
-                        bandwidth so the output matches the audio-path
-                        resolution.  Specify W:<native_bw> (from FFT Q)
-                        for raw native resolution.  Works with Q and V.
-     Without arguments returns the full spectrum (pooled to default
-     bin filter width).  S: without C: returns all bins from S: to the right
-     edge.  C: without S: returns first C: bins from the left edge.
-    Clamping is always applied; C: reports actual returned count.
+                        bandwidth, or 25 kHz when no demodulator is
+                        active, so the output is bounded.  Specify
+                        W:<native_bw> (from FFT Q) for raw native
+                        resolution.  Works with Q and V.
+     Without arguments returns the spectrum pooled to the default
+     width.  S: without C: returns all bins from S: to the right edge.
+     C: without S: returns first C: bins from the left edge.  At most
+     4096 bins are returned per response; use S:/C: to page wider
+     spectra.  S/E are the centers of the first/last returned pooled
+     bin.  Clamping is always applied; C: reports the actual count
+     (C:0 is valid for an out-of-range S:).
 
 Reply:
  RPRT 0
