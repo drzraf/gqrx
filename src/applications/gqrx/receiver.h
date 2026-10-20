@@ -47,6 +47,9 @@
 #include "dsp/resampler_xx.h"
 #include "interfaces/udp_sink_f.h"
 #include "receivers/receiver_base.h"
+#ifdef WITH_SHM_IQ_SINK
+#include "applications/gqrx/shm_iq_sink.hpp"
+#endif
 
 #ifdef WITH_PULSEAUDIO
 #include "pulseaudio/pa_sink.h"
@@ -211,6 +214,8 @@ public:
     status      start_iq_recording(const std::string filename);
     status      stop_iq_recording();
     status      seek_iq_file(long pos);
+    status      start_iq_stream();
+    status      stop_iq_stream();
 
     /* Squelch-gated evidence recording */
     status      start_evidence_recording(const squelch_iq_config &config);
@@ -260,6 +265,9 @@ private:
     std::string output_devstr; /*!< Current output device string. */
 
     rx_demod    d_demod;       /*!< Current demodulator. */
+#ifdef WITH_SHM_IQ_SINK
+    bool        shm_connected_; /*!< Whether shm_sink is in the flow graph. */
+#endif
 
     gr::top_block_sptr         tb;        /*!< The GNU Radio top block. */
 
@@ -281,6 +289,9 @@ private:
     gr::blocks::multiply_const_ff::sptr wav_gain1; /*!< WAV file gain block. */
 
     gr::blocks::file_sink::sptr         iq_sink;     /*!< I/Q file sink. */
+#ifdef WITH_SHM_IQ_SINK
+    shm_iq_sink::sptr                   shm_sink;    /*!< Shared-memory I/Q sink. */
+#endif
     squelch_iq_sink_sptr                evidence_sink; /*!< Squelch-gated evidence sink. */
 
     gr::blocks::wavfile_sink::sptr      wav_sink;   /*!< WAV file sink for recording. */

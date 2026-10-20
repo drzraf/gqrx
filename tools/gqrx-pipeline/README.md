@@ -27,6 +27,8 @@ The optional IQ segment is then used by rtl_433/URH for decoding.
 | `evidence.py` | evidence bundle builder |
 | `screenshot.py` | screenshot-wrapper / grim / X11 capture |
 | `decode.py` | thin rtl_433 wrapper for CF32/CU8/CS16 files |
+| `shm_iq.py` | attach to gqrx's memfd/eventfd CU8 ring |
+| `live_decode.py` | pipe the SHM stream directly to rtl_433 |
 | `tests/` | stdlib `unittest` tests; synthetic only, no long IQ |
 
 ## Requirements
@@ -147,6 +149,25 @@ Optional flex spec (OOK fixture only):
 
 `index.jsonl` is the machine-readable summary; `metadata.json` is the
 human/forensic record inside each bundle.
+
+### 6. Live decode from the SHM stream
+
+Build gqrx with `WITH_SHM_IQ_SINK=ON` (default on Linux) and arm the stream:
+
+```sh
+python3 tools/gqrx-pipeline/live_decode.py \
+  --arm --port 7356 --freq 433900000 \
+  --rtl433 /path/to/rtl433 \
+  --flex 'n=fixture,m=OOK_PWM,s=467,l=927,r=2000,g=0,t=0,bits=29' \
+  --output events.jsonl
+```
+
+The stream is CU8 and is independent of disk recording. It taps after input
+decimation, so the header rate is the decimated rate. `--arm` sends
+`U IQSTREAM 1`; the tool sends `U IQSTREAM 0` on exit. The fd handoff uses a
+short-lived Unix socket (`/tmp/gqrx_iq.sock` by default, or `GQRX_IQ_SOCK`).
+The consumer must run in the same user/namespace as gqrx; in a container, run
+the consumer inside that container.
 
 ## Storage and CPU rules
 

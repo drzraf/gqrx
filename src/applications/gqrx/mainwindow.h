@@ -200,6 +200,8 @@ private slots:
     void stopIqRecording();
     void startEvidenceRecording(const QString& recdir, const QString& format);
     void stopEvidenceRecording();
+    void startIqStream();
+    void stopIqStream();
     void startIqPlayback(const QString& filename, float samprate, qint64 center_freq);
     void stopIqPlayback();
     void seekIqFile(qint64 seek_pos);

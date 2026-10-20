@@ -41,6 +41,10 @@ Supported commands:
     Get status of IQ recorder
  U IQRECORD <status>
     Set status of IQ recorder to <status>
+ u IQSTREAM
+    Get status of shared-memory IQ stream
+ U IQSTREAM <status>
+    Start/stop shared-memory CU8 IQ stream (Linux, WITH_SHM_IQ_SINK)
  u EVIDENCE
     Get status of squelch-gated evidence recorder
  U EVIDENCE <status>
