@@ -116,6 +116,7 @@ receiver::receiver(const std::string input_device,
 
     iq_swap = make_iq_swap_cc(false);
     dc_corr = make_dc_corr_cc(d_decim_rate, 1.0);
+    evidence_sink = make_squelch_iq_sink();
     iq_fft = make_rx_fft_c(DEFAULT_FFT_SIZE, d_decim_rate, gr::fft::window::WIN_HANN);
 
     audio_fft = make_rx_fft_f(DEFAULT_FFT_SIZE, d_audio_rate, gr::fft::window::WIN_HANN);
@@ -199,14 +200,17 @@ void receiver::set_input_device(const std::string device)
         tb->wait();
     }
 
+    evidence_sink->set_enabled(false);
     if (d_decim >= 2)
     {
         tb->disconnect(src, 0, input_decim, 0);
         tb->disconnect(input_decim, 0, iq_swap, 0);
+        tb->disconnect(input_decim, 0, evidence_sink, 0);
     }
     else
     {
         tb->disconnect(src, 0, iq_swap, 0);
+        tb->disconnect(src, 0, evidence_sink, 0);
     }
 
 #if GNURADIO_VERSION < 0x030802
@@ -239,11 +243,15 @@ void receiver::set_input_device(const std::string device)
     {
         tb->connect(src, 0, input_decim, 0);
         tb->connect(input_decim, 0, iq_swap, 0);
+        tb->connect(input_decim, 0, evidence_sink, 0);
     }
     else
     {
         tb->connect(src, 0, iq_swap, 0);
+        tb->connect(src, 0, evidence_sink, 0);
     }
+    evidence_sink->set_sample_rate(d_decim_rate);
+    evidence_sink->set_center_frequency(d_rf_freq);
 
     if (d_running)
         tb->start();
@@ -363,6 +371,7 @@ double receiver::set_input_rate(double rate)
     ddc->set_decim_and_samp_rate(d_ddc_decim, d_decim_rate);
     rx->set_quad_rate(d_quad_rate);
     iq_fft->set_quad_rate(d_decim_rate);
+    evidence_sink->set_sample_rate(d_decim_rate);
     tb->unlock();
 
     return d_input_rate;
@@ -380,14 +389,17 @@ unsigned int receiver::set_input_decim(unsigned int decim)
         tb->wait();
     }
 
+    evidence_sink->set_enabled(false);
     if (d_decim >= 2)
     {
         tb->disconnect(src, 0, input_decim, 0);
         tb->disconnect(input_decim, 0, iq_swap, 0);
+        tb->disconnect(input_decim, 0, evidence_sink, 0);
     }
     else
     {
         tb->disconnect(src, 0, iq_swap, 0);
+        tb->disconnect(src, 0, evidence_sink, 0);
     }
 
     input_decim.reset();
@@ -425,11 +437,15 @@ unsigned int receiver::set_input_decim(unsigned int decim)
     {
         tb->connect(src, 0, input_decim, 0);
         tb->connect(input_decim, 0, iq_swap, 0);
+        tb->connect(input_decim, 0, evidence_sink, 0);
     }
     else
     {
         tb->connect(src, 0, iq_swap, 0);
+        tb->connect(src, 0, evidence_sink, 0);
     }
+    evidence_sink->set_sample_rate(d_decim_rate);
+    evidence_sink->set_center_frequency(d_rf_freq);
 
 #ifdef CUSTOM_AIRSPY_KERNELS
     if (input_devstr.find("airspy") != std::string::npos)
@@ -537,6 +553,7 @@ bool receiver::get_iq_balance(void) const
 receiver::status receiver::set_rf_freq(double freq_hz)
 {
     d_rf_freq = freq_hz;
+    evidence_sink->set_center_frequency(d_rf_freq);
 
     src->set_center_freq(d_rf_freq);
     // FIXME: read back frequency?
@@ -1228,6 +1245,32 @@ receiver::status receiver::start_iq_recording(const std::string filename)
     return status;
 }
 
+/** Start squelch-gated evidence recording. */
+receiver::status receiver::start_evidence_recording(const squelch_iq_config &config)
+{
+    squelch_iq_config cfg = config;
+    if (cfg.sample_rate_hz <= 0.0)
+        cfg.sample_rate_hz = d_decim_rate;
+    if (cfg.center_freq_hz <= 0.0)
+        cfg.center_freq_hz = d_rf_freq;
+    evidence_sink->set_config(cfg);
+    evidence_sink->set_enabled(true);
+    return evidence_sink->is_enabled() ? STATUS_OK : STATUS_ERROR;
+}
+
+/** Stop squelch-gated evidence recording. */
+receiver::status receiver::stop_evidence_recording()
+{
+    evidence_sink->set_enabled(false);
+    evidence_sink->flush();
+    return STATUS_OK;
+}
+
+squelch_iq_stats receiver::get_evidence_stats() const
+{
+    return evidence_sink->get_stats();
+}
+
 /** Stop I/Q data recorder. */
 receiver::status receiver::stop_iq_recording()
 {
@@ -1346,6 +1389,10 @@ void receiver::connect_all(rx_chain type)
         tb->connect(b, 0, input_decim, 0);
         b = input_decim;
     }
+
+    // Squelch-gated evidence sink always taps the decimated input so it can
+    // be enabled without rebuilding the graph.
+    tb->connect(b, 0, evidence_sink, 0);
 
     if (d_recording_iq)
     {

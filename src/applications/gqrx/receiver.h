@@ -43,6 +43,7 @@
 #include "dsp/rx_demod_am.h"
 #include "dsp/rx_fft.h"
 #include "dsp/sniffer_f.h"
+#include "dsp/squelch_iq_sink.h"
 #include "dsp/resampler_xx.h"
 #include "interfaces/udp_sink_f.h"
 #include "receivers/receiver_base.h"
@@ -211,6 +212,11 @@ public:
     status      stop_iq_recording();
     status      seek_iq_file(long pos);
 
+    /* Squelch-gated evidence recording */
+    status      start_evidence_recording(const squelch_iq_config &config);
+    status      stop_evidence_recording();
+    squelch_iq_stats get_evidence_stats() const;
+
     /* sample sniffer */
     status      start_sniffer(unsigned int samplrate, int buffsize);
     status      stop_sniffer();
@@ -275,6 +281,7 @@ private:
     gr::blocks::multiply_const_ff::sptr wav_gain1; /*!< WAV file gain block. */
 
     gr::blocks::file_sink::sptr         iq_sink;     /*!< I/Q file sink. */
+    squelch_iq_sink_sptr                evidence_sink; /*!< Squelch-gated evidence sink. */
 
     gr::blocks::wavfile_sink::sptr      wav_sink;   /*!< WAV file sink for recording. */
     gr::blocks::wavfile_source::sptr    wav_src;    /*!< WAV file source for playback. */
