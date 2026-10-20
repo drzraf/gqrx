@@ -449,6 +449,7 @@ MainWindow::~MainWindow()
     delete uiDockFft;
     delete uiDockInputCtl;
     delete uiDockRDS;
+    remote->setReceiver(nullptr);
     delete rx;
     delete remote;
     delete qsvg_dummy;
