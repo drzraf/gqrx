@@ -133,7 +133,7 @@ human/forensic record inside each bundle.
 
 - **IQ is off by default.** A CF32 stream at 2 MSps is ~57.6 GB/hour.
 - Per-trigger IQ is capped by `--iq-max-mb`; default 8 MB.
-- Session quota defaults to 1 GB/day; retention defaults to 7 days.
+- Session quota defaults to 1 GB **per session** (rotate daily); retention defaults to 7 days.
 - Tests use synthetic buffers; do not run long captures in tests.
 - Scan with one FFT query per window, not one tune per bin.
 - Decode/record at 250–500 kSps, not at the full source rate.
