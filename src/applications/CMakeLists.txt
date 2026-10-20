@@ -16,6 +16,18 @@ add_source_files(SRCS_LIST
 	gqrx/file_resources.cpp
 )
 
+if(WITH_SHM_IQ_SINK)
+	add_source_files(SRCS_LIST
+		gqrx/shm_ringbuf.cpp
+		gqrx/shm_ringbuf.hpp
+		gqrx/shm_ringbuf_impl.cpp
+		gqrx/shm_iq_sink.cpp
+		gqrx/shm_iq_sink.hpp
+		gqrx/shm_iq_sink_impl.cpp
+		gqrx/shm_iq_sink_impl.h
+	)
+endif()
+
 #######################################################################################################################
 # Add the UI files to UI_SRCS_LIST
 add_source_files(UI_SRCS_LIST

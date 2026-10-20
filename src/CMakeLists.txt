@@ -121,6 +121,10 @@ else()
     )
 endif()
 
+if(CMAKE_SYSTEM_NAME MATCHES "Linux" AND WITH_SHM_IQ_SINK)
+    target_link_libraries(${PROJECT_NAME} rt)
+endif()
+
 #build a win32 app, not a console app
 if (WIN32)
     if (MSVC)
