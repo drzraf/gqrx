@@ -30,6 +30,7 @@ The optional IQ segment is then used by rtl_433/URH for decoding.
 | `decode.py` | thin rtl_433 wrapper for CF32/CU8/CS16 files |
 | `shm_iq.py` | attach to gqrx's memfd/eventfd CU8 ring |
 | `live_decode.py` | pipe the SHM stream directly to rtl_433 |
+| `urh_probe.py` | bounded URH-NG auto-interpretation + flex proposal |
 | `tests/` | stdlib `unittest` tests; synthetic only, no long IQ |
 
 ## Requirements
@@ -184,6 +185,22 @@ Writes `scan.jsonl`, `scan_summary.json`, `heatmap.csv`, `heatmap.png` (matplotl
 optional), and merges hits into gqrx's bookmark CSV with the `scan` tag. Use
 `--no-heatmap` for a CPU/disk-light run. Stop gqrx before editing bookmarks, or
 use the remote bookmark API once PR #1464 is available.
+
+### 8. Probe an unknown signal with URH-NG
+
+```sh
+python3 tools/gqrx-pipeline/urh_probe.py segment.raw \
+  --sample-rate 250000 --format cf32 --window 262144 \
+  --output segment.urh.json --symlink-complex
+```
+
+The probe reads a bounded, burst-dense window, asks URH-NG
+`AutoInterpretation.estimate`, and prints a JSON proposal with modulation,
+base symbol timing, and `OOK_PWM`/`OOK_PCM` candidates. It is intentionally a
+proposal: URH's `center` is a decision threshold, not a carrier offset, and its
+`bit_length` is a base symbol, not the short/long PWM widths. Validate every
+candidate with a known payload and add `bits=` to avoid fragments. Use the URH
+GUI for field inference / PHZ auto-identification.
 
 ## Storage and CPU rules
 
