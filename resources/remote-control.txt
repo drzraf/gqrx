@@ -85,7 +85,8 @@ Supported commands:
     Get     FFT spectrum data. Response format:
      RPRT 0 F:<freq> R:<rate> Z:<fftsize> S:<start> E:<end> B:<bw> N:<total> C:<count> [<dbfs_1> ...]
    Metadata fields:
-     F    Center frequency the receiver is tuned to [Hz]
+     F    Frequency of the FFT/hardware center [Hz]; with a channel
+          filter offset this can differ from the ``f`` command.
      R    I/Q sample rate [Hz] (native_bw = R / Z)
      Z    FFT size (number of native bins)
      S    Start frequency of the first returned bin [Hz]
