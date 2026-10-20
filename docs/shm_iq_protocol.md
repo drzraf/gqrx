@@ -2,8 +2,9 @@
 
 This document describes the inter-process IQ data streaming protocol used when
 gqrx is built with `WITH_SHM_IQ_SINK=ON` (the default on Linux).  It is
-precise enough to implement or verify a compatible consumer (e.g. the
-`fix/memfd-spsc` branch of `mhassell/rtl_433`) without reading the gqrx source.
+precise enough to implement or verify a compatible consumer (e.g.
+`tools/gqrx-pipeline/live_decode.py`, which pipes the stream to stock
+`rtl_433 -r cu8:-`) without reading the gqrx source.
 
 ---
 
@@ -181,7 +182,9 @@ shm_ringbuf_attach(fds[0], fds[1], &ctx);
 ```
 
 The socket path can be overridden by setting `GQRX_IQ_SOCK` in the gqrx
-environment before it starts streaming.
+environment before it starts streaming. The handoff socket is created with
+mode `0666` for one short-lived transfer; the consumer must be able to reach
+the path (same user, or same container/namespace).
 
 ---
 
