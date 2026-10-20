@@ -116,6 +116,7 @@ MainWindow::MainWindow(const QString& cfgfile, bool edit_conf, QWidget *parent) 
 
     // remote controller
     remote = new RemoteControl();
+    remote->setReceiver(rx);
 
     /* meter timer */
     meter_timer = new QTimer(this);
@@ -448,6 +449,7 @@ MainWindow::~MainWindow()
     delete uiDockFft;
     delete uiDockInputCtl;
     delete uiDockRDS;
+    remote->setReceiver(nullptr);
     delete rx;
     delete remote;
     delete qsvg_dummy;

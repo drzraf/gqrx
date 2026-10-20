@@ -78,7 +78,39 @@ Supported commands:
     Set 'Split' mode (only usable for hamlib compatibility)
  _
     Get version
-
+ FFT Q [W:<target_bw_hz>]
+    Query full FFT parameters (metadata only, no values).
+    Optional W: specifies target bin width for pooled output pool.
+ FFT V [S:<start_hz>] [C:<n>] [W:<target_bw_hz>]
+    Get     FFT spectrum data. Response format:
+     RPRT 0 F:<freq> R:<rate> Z:<fftsize> S:<start> E:<end> B:<bw> N:<total> C:<count> [<dbfs_1> ...]
+   Metadata fields:
+     F    Frequency of the FFT/hardware center [Hz]; with a channel
+          filter offset this can differ from the ``f`` command.
+     R    I/Q sample rate [Hz] (native_bw = R / Z)
+     Z    FFT size (number of native bins)
+     S    Start frequency of the first returned bin [Hz]
+     E    End frequency of the last returned bin [Hz]
+     B    Bin width [Hz]
+     N    Total number of bins in the full FFT
+     C    Number of bins returned in this response
+   Arguments:
+      S:<start_hz>      Start frequency for the returned bins [Hz]
+      C:<n>             Number of bins to return
+      W:<target_bw_hz>  Target bin width [Hz]. Adjacent native FFT
+                        bins are power-averaged to produce wider
+                        output bins.  Defaults to the channel filter
+                        bandwidth, or 25 kHz when no demodulator is
+                        active, so the output is bounded.  Specify
+                        W:<native_bw> (from FFT Q) for raw native
+                        resolution.  Works with Q and V.
+     Without arguments returns the spectrum pooled to the default
+     width.  S: without C: returns all bins from S: to the right edge.
+     C: without S: returns first C: bins from the left edge.  At most
+     4096 bins are returned per response; use S:/C: to page wider
+     spectra.  S/E are the centers of the first/last returned pooled
+     bin.  Clamping is always applied; C: reports the actual count
+     (C:0 is valid for an out-of-range S:).
 
 Reply:
  RPRT 0

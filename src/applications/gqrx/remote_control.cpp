@@ -20,19 +20,25 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 #include <QString>
 #include <QStringList>
 #include "remote_control.h"
+#include "receiver.h"
 #include "qtgui/dockrxopt.h"
 
 #define DEFAULT_RC_PORT            7356
 #define DEFAULT_RC_ALLOWED_HOSTS   "127.0.0.1"
+#define RC_FFT_DEFAULT_BW_HZ       25000.0
+#define RC_FFT_MAX_BINS            4096
 
 RemoteControl::RemoteControl(QObject *parent) :
-    QObject(parent)
+    QObject(parent),
+    d_rx(nullptr)
 {
 
     rc_freq = 0;
@@ -220,7 +226,9 @@ void RemoteControl::startRead()
             continue;
 
         QString cmd = cmdlist[0];
-        if (cmd == "f")
+        if (cmd == "FFT")
+            answer = cmd_get_fft(cmdlist);
+        else if (cmd == "f")
             answer = cmd_get_freq();
         else if (cmd == "F")
             answer = cmd_set_freq(cmdlist);
@@ -1053,4 +1061,213 @@ QString RemoteControl::cmd_dump_state() const
         "0\n" /* RIG_PARM_NONE */
         /* Bit field list of set parm */
         "0\n" /* RIG_PARM_NONE */);
+}
+
+/* FFT spectrum data command. */
+QString RemoteControl::cmd_get_fft(QStringList cmdlist)
+{
+    if (!d_rx || !receiver_running)
+        return QString("RPRT 1\n");
+
+    unsigned int fftsize = d_rx->iq_fft_size();
+    double quad_rate = d_rx->get_quad_rate();
+    if (fftsize == 0 || quad_rate <= 0.0 || !std::isfinite(quad_rate))
+        return QString("RPRT 1\n");
+
+    double native_bw = quad_rate / fftsize;
+    if (native_bw <= 0.0 || !std::isfinite(native_bw))
+        return QString("RPRT 1\n");
+
+    /* Parse sub-command (Q or V). */
+    QString sub = cmdlist.value(1, "V");
+
+    if (sub != "Q" && sub != "V")
+        return QString("RPRT 1\n");
+
+    /* Parse optional S:<start_hz>, C:<count>, W:<target_bw_hz>. */
+    double req_start = 0.0;
+    int    req_count = -1;
+    double req_width = 0.0;
+    bool   has_start = false, has_count = false, has_width = false;
+    bool   query_only = (sub == "Q");
+
+    for (int i = 2; i < cmdlist.size(); i++)
+    {
+        QString arg = cmdlist[i];
+        if (arg.startsWith("S:"))
+        {
+            bool ok;
+            req_start = arg.mid(2).toDouble(&ok);
+            if (!ok || !std::isfinite(req_start)) return QString("RPRT 1\n");
+            has_start = true;
+        }
+        else if (arg.startsWith("C:"))
+        {
+            bool ok;
+            req_count = arg.mid(2).toInt(&ok);
+            if (!ok || req_count < 0) return QString("RPRT 1\n");
+            has_count = true;
+        }
+        else if (arg.startsWith("W:"))
+        {
+            bool ok;
+            req_width = arg.mid(2).toDouble(&ok);
+            if (!ok || req_width <= 0.0 || !std::isfinite(req_width))
+                return QString("RPRT 1\n");
+            has_width = true;
+        }
+        else
+        {
+            return QString("RPRT 1\n");
+        }
+    }
+
+    /* Reject S: and C: arguments on query sub-command (W: is allowed). */
+    if (query_only && (has_start || has_count))
+        return QString("RPRT 1\n");
+
+    /* Default: pool to the channel filter bandwidth so the output
+     * bins match the audio-path resolution.  If no demodulator is
+     * active the channel bandwidth is zero, so use a bounded default
+     * instead of returning the whole FFT. */
+    if (!has_width)
+    {
+        double filter_bw = (double)(rc_passband_hi - rc_passband_lo);
+        req_width = (filter_bw > 0.0 && std::isfinite(filter_bw))
+                    ? filter_bw : RC_FFT_DEFAULT_BW_HZ;
+        has_width = true;
+    }
+
+    /* Compute pooling factor and output grid parameters. */
+    double ratio = req_width / native_bw;
+    if (!std::isfinite(ratio) || ratio < 1.0)
+        ratio = 1.0;
+    if (ratio > (double)fftsize)
+        ratio = (double)fftsize;
+
+    unsigned int pool = (unsigned int)(ratio + 0.5);
+    if (pool < 1) pool = 1;
+    if (pool > fftsize) pool = fftsize;
+
+    double bin_width = pool * native_bw;
+    unsigned int total_bins = (fftsize + pool - 1) / pool;
+    if (total_bins == 0) total_bins = 1;
+
+    /* Full visible spectrum boundaries.
+     *
+     * The IQ FFT is connected before the NCO (receiver.cpp:1366) so the
+     * visible spectrum is centered at the hardware LO frequency, i.e.
+     * rc_freq minus the channel filter offset.  Using rc_freq directly
+     * would shift all bin frequencies by rc_filter_offset.
+     */
+    double half_span = (fftsize / 2.0) * native_bw;
+    double hw_center = (double)(rc_freq - rc_filter_offset);
+    double vis_start = hw_center - half_span;
+    double vis_end   = hw_center + half_span;
+
+    /* Determine the requested bin range in the output grid. */
+    unsigned int start_idx = 0;
+    unsigned int n_bins = total_bins;
+
+    if (has_start)
+    {
+        if (req_start >= vis_end)
+        {
+            /* Clamp to the right edge: return an empty range. */
+            start_idx = total_bins;
+        }
+        else if (req_start > vis_start)
+        {
+            double offset = (req_start - vis_start) / bin_width;
+            if (!std::isfinite(offset) || offset < 0.0)
+                start_idx = 0;
+            else if (offset >= (double)total_bins)
+                start_idx = total_bins;
+            else
+                start_idx = (unsigned int)offset;
+        }
+    }
+
+    if (has_count)
+    {
+        n_bins = (unsigned int)std::min(req_count, RC_FFT_MAX_BINS);
+    }
+    else if (has_start)
+    {
+        /* S: without C: -> from start to right edge. */
+        n_bins = (start_idx < total_bins) ? (total_bins - start_idx) : 0;
+    }
+
+    if (n_bins > RC_FFT_MAX_BINS)
+        n_bins = RC_FFT_MAX_BINS;
+    if (start_idx >= total_bins)
+        n_bins = 0;
+    else if (n_bins > total_bins - start_idx)
+        n_bins = total_bins - start_idx;
+
+    /* Compute the center of the first / last pooled bin.  A pooled bin
+     * covers native bins [j*pool, (j+1)*pool), so its center is offset
+     * by (pool-1)/2 native bins from the first native bin. */
+    double first_center_offset = (pool - 1) * native_bw / 2.0;
+    double s_freq = vis_start + start_idx * bin_width + first_center_offset;
+    double e_freq = (n_bins > 0) ? (s_freq + (n_bins - 1) * bin_width) : s_freq;
+
+    /* Build response header.
+     * R:<quad_rate> and Z:<fftsize> allow the client to compute the
+     * exact native bin width (R/Z) without an extra native-res query. */
+    QString answer = QString("RPRT 0 F:%1 R:%2 Z:%3 S:%4 E:%5 B:%6 N:%7 C:%8")
+                         .arg((qint64)(rc_freq - rc_filter_offset))
+                         .arg(quad_rate, 0, 'f', 0)
+                         .arg(fftsize)
+                         .arg(s_freq, 0, 'f', 1)
+                         .arg(e_freq, 0, 'f', 1)
+                         .arg(bin_width, 0, 'f', 1)
+                         .arg(total_bins)
+                         .arg(n_bins);
+
+    /* Fetch and convert values (skip for query-only). */
+    bool need_values = (!query_only && n_bins > 0);
+
+    if (need_values)
+    {
+        std::vector<float> mag_sq(fftsize);
+        if (d_rx->get_iq_fft_data(mag_sq.data()) < 0)
+            return QString("RPRT 1\n");
+
+        float scale = 1.0f / ((float)fftsize * (float)fftsize);
+        QStringList vals;
+        vals.reserve(n_bins);
+
+        if (pool > 1)
+        {
+            for (unsigned int j = start_idx; j < start_idx + n_bins; j++)
+            {
+                double sum = 0.0;
+                unsigned int base = j * pool;
+                unsigned int count = std::min(pool, fftsize - base);
+                for (unsigned int k = 0; k < count; k++)
+                    sum += (double)mag_sq[base + k];
+                if (count == 0)
+                    continue;
+                float avg = (float)(sum / (double)count);
+                float dbfs = 10.0f * log10f(
+                    std::max(avg * scale, 1.0e-20f));
+                vals.append(QString::number(dbfs, 'f', 1));
+            }
+        }
+        else
+        {
+            for (unsigned int i = start_idx; i < start_idx + n_bins; i++)
+            {
+                float dbfs = 10.0f * log10f(
+                    std::max(mag_sq[i] * scale, 1.0e-20f));
+                vals.append(QString::number(dbfs, 'f', 1));
+            }
+        }
+
+        answer += " " + vals.join(" ");
+    }
+
+    answer += "\n";
+    return answer;
 }
