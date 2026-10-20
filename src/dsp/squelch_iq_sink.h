@@ -45,6 +45,7 @@ struct squelch_iq_config
     double min_event_ms = 50.0;     /*!< Discard shorter segments. */
     double max_segment_s = 30.0;    /*!< Split long segments at this duration. */
     double min_gap_ms = 1000.0;     /*!< Suppress re-triggering after a close. */
+    uint64_t max_total_bytes = 1024ULL * 1024ULL * 1024ULL; /*!< Stop after this payload budget. */
     bool sigmf = false;             /*!< Write SigMF data + metadata instead of raw. */
 };
 

@@ -1755,6 +1755,7 @@ void MainWindow::startEvidenceRecording(const QString& recdir, const QString& fo
     cfg.min_event_ms = 50.0;
     cfg.max_segment_s = 30.0;
     cfg.min_gap_ms = 1000.0;
+    cfg.max_total_bytes = 1024ULL * 1024ULL * 1024ULL;
     cfg.sigmf = (format == "SigMF");
 
     if (rx->start_evidence_recording(cfg) != receiver::STATUS_OK)

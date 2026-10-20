@@ -365,6 +365,14 @@ int squelch_iq_sink::work(int noutput_items,
     if (!d_enabled || noutput_items <= 0)
         return noutput_items;
 
+    if (d_config.max_total_bytes > 0 && d_stats.bytes >= d_config.max_total_bytes)
+    {
+        if (d_state == STATE_ACTIVE)
+            close_segment_locked(d_samples_processed, true);
+        d_enabled = false;
+        return noutput_items;
+    }
+
     const gr_complex *in = static_cast<const gr_complex *>(input_items[0]);
     int write_start = 0;
 

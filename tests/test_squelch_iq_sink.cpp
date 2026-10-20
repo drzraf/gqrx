@@ -168,6 +168,23 @@ int main(int argc, char **argv)
         const QString dir = temp.path + "/evidence";
         auto sink = make_squelch_iq_sink();
         auto cfg = config(dir);
+        cfg.max_total_bytes = 1000;
+        cfg.max_segment_s = 0.05;
+        sink->set_config(cfg);
+        sink->set_enabled(true);
+        feed(sink, high(300));
+        if (sink->get_stats().enabled)
+        {
+            std::cerr << "FAIL: byte budget did not disarm sink" << std::endl;
+            failures++;
+        }
+    }
+
+    {
+        TempDir temp;
+        const QString dir = temp.path + "/evidence";
+        auto sink = make_squelch_iq_sink();
+        auto cfg = config(dir);
         cfg.sigmf = true;
         sink->set_config(cfg);
         sink->set_enabled(true);
