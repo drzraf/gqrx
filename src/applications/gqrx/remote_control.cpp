@@ -20,9 +20,11 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 #include <QString>
 #include <QStringList>
 #include <QVector>
