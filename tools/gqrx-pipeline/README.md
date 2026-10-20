@@ -214,7 +214,7 @@ GUI for field inference / PHZ auto-identification.
 
 ## Live validation
 
-`FFT Q` / `FFT V` were validated against a running gqrx built from `feature/gqrx-pipeline-integration`, using a small synthetic CF32 file source and the Gr-audio backend. `scan.py` parsed the response and found the synthetic +150 kHz tone at 433.9138 MHz. See `context/GQRX_PIPELINE.md` §9.5.
+`FFT Q` / `FFT V` were validated against a running gqrx built from `feature/gqrx-pipeline-integration`, using a small synthetic CF32 file source and the Gr-audio backend. `scan.py` parsed the response and found the synthetic +150 kHz tone at 433.9138 MHz. See the `context-docs` branch: `git show context-docs:context/GQRX_PIPELINE.md` §9.5.
 
 ## Tests
 
@@ -234,4 +234,4 @@ Conflict resolution: none | <files/notes>
 Upstream-status: not-applicable | open | merged | closed
 ```
 
-See `context/UPSTREAM_TRACKING.md` for the ledger.
+See the `context-docs` branch: `git show context-docs:context/UPSTREAM_TRACKING.md` for the ledger.
