@@ -73,6 +73,9 @@ receiver::receiver(const std::string input_device,
       d_dc_cancel(false),
       d_iq_balance(false),
       d_demod(RX_DEMOD_OFF)
+#ifdef WITH_SHM_IQ_SINK
+      , shm_connected_(false)
+#endif
 {
 
     tb = gr::make_top_block("gqrx");
@@ -200,6 +203,7 @@ void receiver::set_input_device(const std::string device)
         tb->wait();
     }
 
+    stop_iq_stream();
     evidence_sink->set_enabled(false);
     if (d_decim >= 2)
     {
@@ -339,6 +343,7 @@ double receiver::set_input_rate(double rate)
             std::abs(rate - current_rate) < std::abs(std::min(rate, current_rate))
             * std::numeric_limits<double>::epsilon());
 
+    stop_iq_stream();
     tb->lock();
     try
     {
@@ -389,6 +394,7 @@ unsigned int receiver::set_input_decim(unsigned int decim)
         tb->wait();
     }
 
+    stop_iq_stream();
     evidence_sink->set_enabled(false);
     if (d_decim >= 2)
     {
@@ -1211,6 +1217,62 @@ receiver::status receiver::stop_udp_streaming()
     return STATUS_OK;
 }
 
+/** Start the zero-copy CU8 shared-memory IQ stream. */
+receiver::status receiver::start_iq_stream()
+{
+#ifdef WITH_SHM_IQ_SINK
+    if (shm_connected_)
+        return STATUS_OK;
+    if (!shm_sink)
+        shm_sink = shm_iq_sink::make(static_cast<unsigned long>(d_decim_rate));
+
+    tb->lock();
+    try
+    {
+        if (d_decim >= 2)
+            tb->connect(input_decim, 0, gr::basic_block_sptr(shm_sink), 0);
+        else
+            tb->connect(src, 0, gr::basic_block_sptr(shm_sink), 0);
+        shm_connected_ = true;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Could not connect SHM sink: " << e.what() << std::endl;
+        tb->unlock();
+        return STATUS_ERROR;
+    }
+    tb->unlock();
+    return STATUS_OK;
+#else
+    return STATUS_ERROR;
+#endif
+}
+
+/** Stop the shared-memory IQ stream. */
+receiver::status receiver::stop_iq_stream()
+{
+#ifdef WITH_SHM_IQ_SINK
+    if (!shm_sink || !shm_connected_)
+        return STATUS_OK;
+    tb->lock();
+    try
+    {
+        if (d_decim >= 2)
+            tb->disconnect(input_decim, 0, gr::basic_block_sptr(shm_sink), 0);
+        else
+            tb->disconnect(src, 0, gr::basic_block_sptr(shm_sink), 0);
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Could not disconnect SHM sink: " << e.what() << std::endl;
+    }
+    shm_connected_ = false;
+    shm_sink.reset();
+    tb->unlock();
+#endif
+    return STATUS_OK;
+}
+
 /**
  * @brief Start I/Q data recorder.
  * @param filename The filename where to record.
@@ -1393,6 +1455,11 @@ void receiver::connect_all(rx_chain type)
     // Squelch-gated evidence sink always taps the decimated input so it can
     // be enabled without rebuilding the graph.
     tb->connect(b, 0, evidence_sink, 0);
+
+#ifdef WITH_SHM_IQ_SINK
+    if (shm_sink && shm_connected_)
+        tb->connect(b, 0, gr::basic_block_sptr(shm_sink), 0);
+#endif
 
     if (d_recording_iq)
     {
