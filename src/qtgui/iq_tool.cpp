@@ -185,15 +185,39 @@ void CIqTool::on_recButton_clicked(bool checked)
     }
 }
 
+/*! Start/stop automatic evidence recording. */
+void CIqTool::on_autoButton_clicked(bool checked)
+{
+    if (checked)
+    {
+        if (ui->recButton->isChecked())
+        {
+            ui->autoButton->setChecked(false);
+            return;
+        }
+        ui->recButton->setEnabled(false);
+        ui->playButton->setEnabled(false);
+        emit startEvidence(recdir->path(), ui->formatCombo->currentText());
+        refreshDir();
+    }
+    else
+    {
+        emit stopEvidence();
+        ui->recButton->setEnabled(true);
+        ui->playButton->setEnabled(true);
+        refreshDir();
+    }
+}
+
 /*! Public slot to start IQ recording by external events (e.g. remote control).
  *
  * If a recording is already in progress we ignore the event.
  */
 void CIqTool::startIqRecorder(void)
 {
-    if (ui->recButton->isChecked())
+    if (ui->recButton->isChecked() || ui->autoButton->isChecked())
     {
-        qDebug() << __func__ << "An IQ recording is already in progress";
+        qDebug() << __func__ << "A recording is already in progress";
         return;
     }
 
@@ -211,6 +235,25 @@ void CIqTool::stopIqRecorder(void)
         ui->recButton->click(); // emulate a button click
     else
         qDebug() << __func__ << "No IQ recording in progress";
+}
+
+void CIqTool::startEvidenceRecorder(void)
+{
+    if (!ui->autoButton->isChecked())
+        ui->autoButton->click();
+}
+
+void CIqTool::stopEvidenceRecorder(void)
+{
+    if (ui->autoButton->isChecked())
+        ui->autoButton->click();
+}
+
+void CIqTool::cancelEvidence(void)
+{
+    ui->autoButton->setChecked(false);
+    ui->recButton->setEnabled(true);
+    ui->playButton->setEnabled(true);
 }
 
 /*! \brief Cancel a recording.

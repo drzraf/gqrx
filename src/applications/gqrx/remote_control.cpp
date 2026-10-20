@@ -57,6 +57,7 @@ RemoteControl::RemoteControl(QObject *parent) :
     audio_gain = -6.0;
     audio_recorder_status = false;
     iq_recorder_status = false;
+    evidence_recorder_status = false;
     receiver_running = false;
     hamlib_compatible = false;
     is_audio_muted = false;
@@ -410,6 +411,18 @@ void RemoteControl::startIqRecorder(QString unused1, QString unused2)
 void RemoteControl::stopIqRecorder()
 {
     iq_recorder_status = false;
+}
+
+/*! \brief Start evidence recorder (from another window). */
+void RemoteControl::startEvidenceRecorder()
+{
+    evidence_recorder_status = true;
+}
+
+/*! \brief Stop evidence recorder (from another window). */
+void RemoteControl::stopEvidenceRecorder()
+{
+    evidence_recorder_status = false;
 }
 
 /*! \brief Set receiver status (from mainwindow). */
@@ -787,11 +800,13 @@ QString RemoteControl::cmd_get_func(QStringList cmdlist)
     QString func = cmdlist.value(1, "");
 
     if (func == "?")
-        answer = QString("RECORD IQRECORD DSP RDS MUTE\n");
+        answer = QString("RECORD IQRECORD EVIDENCE DSP RDS MUTE\n");
     else if (func.compare("RECORD", Qt::CaseInsensitive) == 0)
         answer = QString("%1\n").arg(audio_recorder_status);
     else if (func.compare("IQRECORD", Qt::CaseInsensitive) == 0)
         answer = QString("%1\n").arg(iq_recorder_status);
+    else if (func.compare("EVIDENCE", Qt::CaseInsensitive) == 0)
+        answer = QString("%1\n").arg(evidence_recorder_status);
     else if (func.compare("DSP", Qt::CaseInsensitive) == 0)
         answer = QString("%1\n").arg(receiver_running);
     else if (func.compare("RDS", Qt::CaseInsensitive) == 0)
@@ -814,7 +829,7 @@ QString RemoteControl::cmd_set_func(QStringList cmdlist)
 
     if (func == "?")
     {
-        answer = QString("RECORD IQRECORD DSP RDS MUTE\n");
+        answer = QString("RECORD IQRECORD EVIDENCE DSP RDS MUTE\n");
     }
     else if ((func.compare("RECORD", Qt::CaseInsensitive) == 0) && ok)
     {
@@ -846,6 +861,22 @@ QString RemoteControl::cmd_set_func(QStringList cmdlist)
                 emit startIqRecorderEvent();
             else
                 emit stopIqRecorderEvent();
+        }
+    }
+    else if ((func.compare("EVIDENCE", Qt::CaseInsensitive) == 0) && ok)
+    {
+        if (!receiver_running)
+        {
+            answer = QString("RPRT 1\n");
+        }
+        else
+        {
+            answer = QString("RPRT 0\n");
+            evidence_recorder_status = status;
+            if (status)
+                emit startEvidenceRecorderEvent();
+            else
+                emit stopEvidenceRecorderEvent();
         }
     }
     else if ((func.compare("DSP", Qt::CaseInsensitive) == 0) && ok)

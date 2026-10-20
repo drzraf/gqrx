@@ -47,6 +47,8 @@ add_source_files(SRCS_LIST
 	rx_rds.h
 	sniffer_f.cpp
 	sniffer_f.h
+	squelch_iq_sink.cpp
+	squelch_iq_sink.h
 	stereo_demod.cpp
 	stereo_demod.h
 )

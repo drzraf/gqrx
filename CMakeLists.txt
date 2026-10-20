@@ -124,6 +124,7 @@ endif()
 # 3rd Party Dependency Stuff
 option(FORCE_QT6 "Force Qt6 to be used" OFF)
 option(FORCE_QT5 "Force Qt5 to be used" OFF)
+option(GQRX_BUILD_TESTS "Build gqrx unit tests" OFF)
 
 if(FORCE_QT6)
     find_package(Qt6 REQUIRED COMPONENTS Core Network Widgets Svg SvgWidgets)
@@ -273,6 +274,11 @@ install(FILES resources/icons/dk.gqrx.gqrx.svg DESTINATION share/icons/hicolor/s
 
 # Add subdirectories
 add_subdirectory(src)
+
+if(GQRX_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 
 # uninstall target
 # https://cmake.org/Wiki/CMake_FAQ#Can_I_do_.22make_uninstall.22_with_CMake.3F
