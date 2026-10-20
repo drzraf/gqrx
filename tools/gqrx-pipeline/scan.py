@@ -93,7 +93,7 @@ def fft_available(client: GqrxClient) -> bool:
         return False
 
 
-def fft_scan(
+def fft_sweep(
     client: GqrxClient,
     *,
     start_hz: int,
@@ -103,7 +103,8 @@ def fft_scan(
     max_peaks: int = 20,
     dwell_s: float = 0.1,
     sample_rate_hz: Optional[float] = None,
-) -> List[Dict[str, Any]]:
+    include_spectrum: bool = False,
+) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     if end_hz <= start_hz:
         raise ValueError("end_hz must be greater than start_hz")
     if not fft_available(client):
@@ -119,6 +120,7 @@ def fft_scan(
     step = max(1.0, span * 0.8)
 
     records: List[Dict[str, Any]] = []
+    spectra: List[Dict[str, Any]] = []
     seen: List[float] = []
     center = float(start_hz) + span / 2.0
     while center - span / 2.0 < end_hz:
@@ -131,6 +133,16 @@ def fft_scan(
         fft_header, values = parse_fft_line(reply)
         bin_width = fft_header.get("B", pool_hz)
         visible_start = fft_header.get("S", center - span / 2.0)
+        if include_spectrum:
+            spectra.append(
+                {
+                    "center_hz": center,
+                    "span_hz": span,
+                    "start_hz": visible_start,
+                    "bin_width_hz": bin_width,
+                    "values": values,
+                }
+            )
         for peak in find_peaks(
             values,
             start_hz=visible_start,
@@ -154,8 +166,32 @@ def fft_scan(
             records.append(peak)
         center += step
     records.sort(key=lambda item: item["freq_hz"])
-    return records
+    return records, spectra
 
+
+def fft_scan(
+    client: GqrxClient,
+    *,
+    start_hz: int,
+    end_hz: int,
+    pool_hz: float = 25_000.0,
+    min_prominence_db: float = 6.0,
+    max_peaks: int = 20,
+    dwell_s: float = 0.1,
+    sample_rate_hz: Optional[float] = None,
+) -> List[Dict[str, Any]]:
+    records, _ = fft_sweep(
+        client,
+        start_hz=start_hz,
+        end_hz=end_hz,
+        pool_hz=pool_hz,
+        min_prominence_db=min_prominence_db,
+        max_peaks=max_peaks,
+        dwell_s=dwell_s,
+        sample_rate_hz=sample_rate_hz,
+        include_spectrum=False,
+    )
+    return records
 
 def poll_scan(
     client: GqrxClient,

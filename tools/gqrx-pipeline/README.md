@@ -22,6 +22,7 @@ The optional IQ segment is then used by rtl_433/URH for decoding.
 | `gqrxctl.py` | dependency-free gqrx TCP client |
 | `session.py` | session directory, JSONL index, quota, retention |
 | `scan.py` | FFT scan when `FFT Q`/`FFT V` is available; poll fallback |
+| `scan_session.py` | repeated FFT sweeps, max-hold/occupancy heatmap, bookmark export |
 | `monitor.py` | adaptive level trigger + evidence capture |
 | `rotate.py` | bounded continuous rotation of gqrx IQ/audio recordings |
 | `evidence.py` | evidence bundle builder |
@@ -168,6 +169,21 @@ decimation, so the header rate is the decimated rate. `--arm` sends
 short-lived Unix socket (`/tmp/gqrx_iq.sock` by default, or `GQRX_IQ_SOCK`).
 The consumer must run in the same user/namespace as gqrx; in a container, run
 the consumer inside that container.
+
+### 7. Long scan sessions and heatmaps
+
+```sh
+python3 tools/gqrx-pipeline/scan_session.py \
+  --start 433000000 --end 435000000 \
+  --pool 25000 --duration 300 --interval 1 \
+  --session-root ~/sdr/sessions \
+  --bookmarks ~/.config/gqrx/bookmarks.csv
+```
+
+Writes `scan.jsonl`, `scan_summary.json`, `heatmap.csv`, `heatmap.png` (matplotlib
+optional), and merges hits into gqrx's bookmark CSV with the `scan` tag. Use
+`--no-heatmap` for a CPU/disk-light run. Stop gqrx before editing bookmarks, or
+use the remote bookmark API once PR #1464 is available.
 
 ## Storage and CPU rules
 
