@@ -57,6 +57,7 @@ RemoteControl::RemoteControl(QObject *parent) :
     audio_gain = -6.0;
     audio_recorder_status = false;
     iq_recorder_status = false;
+    iq_stream_status = false;
     evidence_recorder_status = false;
     receiver_running = false;
     hamlib_compatible = false;
@@ -411,6 +412,18 @@ void RemoteControl::startIqRecorder(QString unused1, QString unused2)
 void RemoteControl::stopIqRecorder()
 {
     iq_recorder_status = false;
+}
+
+/*! \brief Start shared-memory IQ stream (from another window). */
+void RemoteControl::startIqStream()
+{
+    iq_stream_status = true;
+}
+
+/*! \brief Stop shared-memory IQ stream (from another window). */
+void RemoteControl::stopIqStream()
+{
+    iq_stream_status = false;
 }
 
 /*! \brief Start evidence recorder (from another window). */
@@ -800,11 +813,13 @@ QString RemoteControl::cmd_get_func(QStringList cmdlist)
     QString func = cmdlist.value(1, "");
 
     if (func == "?")
-        answer = QString("RECORD IQRECORD EVIDENCE DSP RDS MUTE\n");
+        answer = QString("RECORD IQRECORD IQSTREAM EVIDENCE DSP RDS MUTE\n");
     else if (func.compare("RECORD", Qt::CaseInsensitive) == 0)
         answer = QString("%1\n").arg(audio_recorder_status);
     else if (func.compare("IQRECORD", Qt::CaseInsensitive) == 0)
         answer = QString("%1\n").arg(iq_recorder_status);
+    else if (func.compare("IQSTREAM", Qt::CaseInsensitive) == 0)
+        answer = QString("%1\n").arg(iq_stream_status);
     else if (func.compare("EVIDENCE", Qt::CaseInsensitive) == 0)
         answer = QString("%1\n").arg(evidence_recorder_status);
     else if (func.compare("DSP", Qt::CaseInsensitive) == 0)
@@ -829,7 +844,7 @@ QString RemoteControl::cmd_set_func(QStringList cmdlist)
 
     if (func == "?")
     {
-        answer = QString("RECORD IQRECORD EVIDENCE DSP RDS MUTE\n");
+        answer = QString("RECORD IQRECORD IQSTREAM EVIDENCE DSP RDS MUTE\n");
     }
     else if ((func.compare("RECORD", Qt::CaseInsensitive) == 0) && ok)
     {
@@ -861,6 +876,22 @@ QString RemoteControl::cmd_set_func(QStringList cmdlist)
                 emit startIqRecorderEvent();
             else
                 emit stopIqRecorderEvent();
+        }
+    }
+    else if ((func.compare("IQSTREAM", Qt::CaseInsensitive) == 0) && ok)
+    {
+        if (!receiver_running)
+        {
+            answer = QString("RPRT 1\n");
+        }
+        else
+        {
+            answer = QString("RPRT 0\n");
+            iq_stream_status = status;
+            if (status)
+                emit startIqStreamEvent();
+            else
+                emit stopIqStreamEvent();
         }
     }
     else if ((func.compare("EVIDENCE", Qt::CaseInsensitive) == 0) && ok)

@@ -351,6 +351,8 @@ MainWindow::MainWindow(const QString& cfgfile, bool edit_conf, QWidget *parent) 
     connect(remote, SIGNAL(stopIqRecorderEvent()), iq_tool, SLOT(stopIqRecorder()));
     connect(remote, SIGNAL(startEvidenceRecorderEvent()), iq_tool, SLOT(startEvidenceRecorder()));
     connect(remote, SIGNAL(stopEvidenceRecorderEvent()), iq_tool, SLOT(stopEvidenceRecorder()));
+    connect(remote, SIGNAL(startIqStreamEvent()), this, SLOT(startIqStream()));
+    connect(remote, SIGNAL(stopIqStreamEvent()), this, SLOT(stopIqStream()));
     connect(ui->plotter, SIGNAL(newFilterFreq(int, int)), remote, SLOT(setPassband(int, int)));
     connect(remote, SIGNAL(newPassband(int)), this, SLOT(setPassband(int)));
     connect(remote, SIGNAL(gainChanged(QString, double)), uiDockInputCtl, SLOT(setGain(QString,double)));
@@ -1778,6 +1780,28 @@ void MainWindow::stopEvidenceRecording()
     qDebug() << __func__;
     rx->stop_evidence_recording();
     ui->statusBar->showMessage(tr("Evidence recording stopped"), 5000);
+}
+
+void MainWindow::startIqStream()
+{
+#ifdef WITH_SHM_IQ_SINK
+    if (rx->start_iq_stream() != receiver::STATUS_OK)
+    {
+        ui->statusBar->showMessage(tr("Could not start shared-memory IQ stream"), 5000);
+        remote->stopIqStream();
+        return;
+    }
+    ui->statusBar->showMessage(tr("Shared-memory IQ stream started"), 5000);
+#else
+    ui->statusBar->showMessage(tr("Shared-memory IQ stream not available"), 5000);
+    remote->stopIqStream();
+#endif
+}
+
+void MainWindow::stopIqStream()
+{
+    rx->stop_iq_stream();
+    ui->statusBar->showMessage(tr("Shared-memory IQ stream stopped"), 5000);
 }
 
 void MainWindow::startIqPlayback(const QString& filename, float samprate, qint64 center_freq)
