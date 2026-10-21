@@ -295,7 +295,7 @@ void squelch_iq_sink::close_segment_locked(int64_t global_sample, bool keep)
 void squelch_iq_sink::write_index_locked(bool kept)
 {
     (void)kept;
-    const QString path = QDir(QString::fromStdString(d_config.directory)).filePath("evidence.jsonl");
+    const QString path = QDir(QString::fromStdString(d_config.directory)).filePath("recordings.jsonl");
     QFile file(path);
     if (!file.open(QIODevice::Append | QIODevice::Text))
         return;
@@ -303,7 +303,7 @@ void squelch_iq_sink::write_index_locked(bool kept)
     const double duration = d_config.sample_rate_hz > 0.0
         ? static_cast<double>(d_segment_samples) / d_config.sample_rate_hz : 0.0;
     QJsonObject record {
-        {"kind", "evidence_iq"},
+        {"kind", "recording_iq"},
         {"file", QFileInfo(QString::fromStdString(d_current_path)).fileName()},
         {"samples", static_cast<qint64>(d_segment_samples)},
         {"duration_s", duration},
@@ -344,7 +344,7 @@ void squelch_iq_sink::write_sigmf_meta_locked(bool kept)
         {"core:sample_rate", d_config.sample_rate_hz},
         {"core:version", "1.0.0"},
         {"core:recorder", "Gqrx squelch_iq_sink"},
-        {"core:description", "Squelch-gated I/Q evidence segment"},
+        {"core:description", "Squelch-gated I/Q recording segment"},
     };
     const QJsonObject capture {
         {"core:sample_start", 0},

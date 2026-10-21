@@ -102,7 +102,7 @@ int main(int argc, char **argv)
         sink->set_enabled(false);
         const auto stats = sink->get_stats();
         if (stats.segments < 1 || count_files(dir, ".raw") < 1
-            || !QFileInfo::exists(dir + "/evidence.jsonl")
+            || !QFileInfo::exists(dir + "/recordings.jsonl")
             || stats.bytes == 0 || stats.samples == 0)
         {
             std::cerr << "FAIL: trigger/segment stats" << std::endl;

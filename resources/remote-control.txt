@@ -41,10 +41,10 @@ Supported commands:
     Get status of IQ recorder
  U IQRECORD <status>
     Set status of IQ recorder to <status>
- u EVIDENCE
-    Get status of squelch-gated evidence recorder
- U EVIDENCE <status>
-    Arm/disarm squelch-gated evidence recording
+ u RECORDING
+    Get status of squelch-gated recording recorder
+ U RECORDING <status>
+    Arm/disarm squelch-gated recording recording
  u DSP
     Get DSP (SDR receiver) status
  U DSP <status>

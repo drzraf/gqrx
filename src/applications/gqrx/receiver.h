@@ -213,10 +213,10 @@ public:
     status      stop_iq_recording();
     status      seek_iq_file(long pos);
 
-    /* Squelch-gated evidence recording */
-    status      start_evidence_recording(const squelch_iq_config &config);
-    status      stop_evidence_recording();
-    squelch_iq_stats get_evidence_stats() const;
+    /* Squelch-gated recording recording */
+    status      start_iq_sink_recording(const squelch_iq_config &config);
+    status      stop_iq_sink_recording();
+    squelch_iq_stats get_iq_recording_stats() const;
     status      start_recording(const squelch_iq_config &iq,
                                 const squelch_audio_config &audio);
     status      stop_recording();
@@ -286,7 +286,7 @@ private:
     gr::blocks::multiply_const_ff::sptr wav_gain1; /*!< WAV file gain block. */
 
     gr::blocks::file_sink::sptr         iq_sink;     /*!< I/Q file sink. */
-    squelch_iq_sink_sptr                evidence_sink; /*!< Squelch-gated evidence sink. */
+    squelch_iq_sink_sptr                iq_recording_sink; /*!< Squelch-gated recording sink. */
     squelch_audio_sink_sptr             audio_sink;    /*!< Demodulated-audio ring sink. */
     recording_trigger_sptr              recording_trigger; /*!< Shared I/Q/audio event marker. */
 

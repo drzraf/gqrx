@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-/*! Configuration for the squelch-gated I/Q evidence recorder. */
+/*! Configuration for the squelch-gated I/Q recording recorder. */
 struct squelch_iq_config
 {
     std::string directory;          /*!< Output directory (created if needed). */
@@ -72,7 +72,7 @@ typedef std::shared_ptr<squelch_iq_sink> squelch_iq_sink_sptr;
 
 squelch_iq_sink_sptr make_squelch_iq_sink();
 
-/*! \brief Fast, bounded, squelch-gated I/Q evidence sink.
+/*! \brief Fast, bounded, squelch-gated I/Q recording sink.
  *
  * The sink watches the instantaneous power of the complex input. When the
  * signal stays above the threshold for trigger_ms it opens a segment and

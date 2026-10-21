@@ -185,7 +185,7 @@ void CIqTool::on_recButton_clicked(bool checked)
     }
 }
 
-/*! Start/stop automatic evidence recording. */
+/*! Start/stop automatic recording recording. */
 void CIqTool::on_autoButton_clicked(bool checked)
 {
     if (checked)
@@ -197,12 +197,12 @@ void CIqTool::on_autoButton_clicked(bool checked)
         }
         ui->recButton->setEnabled(false);
         ui->playButton->setEnabled(false);
-        emit startEvidence(recdir->path(), ui->formatCombo->currentText());
+        emit startAutoRecording(recdir->path(), ui->formatCombo->currentText());
         refreshDir();
     }
     else
     {
-        emit stopEvidence();
+        emit stopAutoRecording();
         ui->recButton->setEnabled(true);
         ui->playButton->setEnabled(true);
         refreshDir();
@@ -237,19 +237,19 @@ void CIqTool::stopIqRecorder(void)
         qDebug() << __func__ << "No IQ recording in progress";
 }
 
-void CIqTool::startEvidenceRecorder(void)
+void CIqTool::startAutoRecorder(void)
 {
     if (!ui->autoButton->isChecked())
         ui->autoButton->click();
 }
 
-void CIqTool::stopEvidenceRecorder(void)
+void CIqTool::stopAutoRecorder(void)
 {
     if (ui->autoButton->isChecked())
         ui->autoButton->click();
 }
 
-void CIqTool::cancelEvidence(void)
+void CIqTool::cancelAutoRecording(void)
 {
     ui->autoButton->setChecked(false);
     ui->recButton->setEnabled(true);

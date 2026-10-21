@@ -64,8 +64,8 @@ public:
 signals:
     void startRecording(const QString recdir, const QString format);
     void stopRecording();
-    void startEvidence(const QString recdir, const QString format);
-    void stopEvidence();
+    void startAutoRecording(const QString recdir, const QString format);
+    void stopAutoRecording();
     void startPlayback(const QString filename, float samprate, qint64 center_freq);
     void stopPlayback();
     void seek(qint64 seek_pos);
@@ -75,9 +75,9 @@ public slots:
     void cancelPlayback();
     void startIqRecorder(void);     /*!< Used if IQ Recorder is started e.g. from remote control */
     void stopIqRecorder(void);      /*!< Used if IQ Recorder is stopped e.g. from remote control */
-    void startEvidenceRecorder(void); /*!< Arm evidence recording from remote control */
-    void stopEvidenceRecorder(void);  /*!< Disarm evidence recording from remote control */
-    void cancelEvidence(void);        /*!< Reset the auto button after a start failure */
+    void startAutoRecorder(void); /*!< Arm recording recording from remote control */
+    void stopAutoRecorder(void);  /*!< Disarm recording recording from remote control */
+    void cancelAutoRecording(void);     /*!< Reset the auto button after a start failure */
 
 private slots:
     void on_recDirEdit_textChanged(const QString &text);
