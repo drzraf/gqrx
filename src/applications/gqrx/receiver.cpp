@@ -205,6 +205,7 @@ void receiver::set_input_device(const std::string device)
     }
 
     iq_recording_sink->set_enabled(false);
+    audio_sink->set_enabled(false);
     if (d_decim >= 2)
     {
         tb->disconnect(src, 0, input_decim, 0);
@@ -394,6 +395,7 @@ unsigned int receiver::set_input_decim(unsigned int decim)
     }
 
     iq_recording_sink->set_enabled(false);
+    audio_sink->set_enabled(false);
     if (d_decim >= 2)
     {
         tb->disconnect(src, 0, input_decim, 0);
@@ -1286,7 +1288,10 @@ receiver::status receiver::start_recording(const squelch_iq_config &iq,
     audio_sink->set_config(acfg);
     audio_sink->set_enabled(true);
     if (iq_status != STATUS_OK)
+    {
+        audio_sink->set_enabled(false);
         return iq_status;
+    }
     return audio_sink->is_enabled() ? STATUS_OK : STATUS_ERROR;
 }
 
