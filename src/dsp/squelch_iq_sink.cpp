@@ -114,6 +114,12 @@ void squelch_iq_sink::set_center_frequency(double freq_hz)
     d_config.center_freq_hz = freq_hz;
 }
 
+void squelch_iq_sink::set_trigger(const recording_trigger_sptr &trigger)
+{
+    std::lock_guard<std::mutex> lock(d_mutex);
+    d_trigger = trigger;
+}
+
 void squelch_iq_sink::set_sample_rate(double rate_hz)
 {
     std::lock_guard<std::mutex> lock(d_mutex);
@@ -235,6 +241,11 @@ bool squelch_iq_sink::open_segment_locked(int64_t global_sample, float peak_powe
     d_segment_peak = peak_power;
     d_stats.started++;
     d_stats.last_file = d_current_path;
+    if (d_trigger)
+    {
+        d_trigger->sequence.fetch_add(1);
+        d_trigger->active.store(true);
+    }
     if (with_ring)
         write_ring_locked();
     d_last_flush = std::chrono::steady_clock::now();
@@ -267,6 +278,8 @@ void squelch_iq_sink::close_segment_locked(int64_t global_sample, bool keep)
             QFile::remove(QString::fromStdString(d_current_meta));
     }
 
+    if (d_trigger)
+        d_trigger->active.store(false);
     d_current_path.clear();
     d_current_meta.clear();
     d_segment_start_iso.clear();

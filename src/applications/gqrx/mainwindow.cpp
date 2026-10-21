@@ -1743,22 +1743,38 @@ void MainWindow::startEvidenceRecording(const QString& recdir, const QString& fo
 
     squelch_iq_config cfg;
     cfg.directory = recdir.toStdString();
-    cfg.prefix = "gqrx_evt";
+    cfg.prefix = "gqrx_rec";
     cfg.sample_rate_hz = rx->get_input_rate() / (double)rx->get_input_decim();
     cfg.center_freq_hz = rx->get_rf_freq();
     cfg.threshold_db = (float)uiDockRxOpt->getSqlLevel();
     if (cfg.threshold_db <= -149.0f)
         cfg.threshold_db = -80.0f; // squelch disabled; use a sane noise trigger
     cfg.trigger_ms = 0.2;
-    cfg.pre_roll_ms = 250.0;
-    cfg.hangover_ms = 500.0;
+    cfg.pre_roll_ms = 1000.0;
+    cfg.hangover_ms = 1000.0;
     cfg.min_event_ms = 50.0;
     cfg.max_segment_s = 30.0;
     cfg.min_gap_ms = 1000.0;
     cfg.max_total_bytes = 1024ULL * 1024ULL * 1024ULL;
     cfg.sigmf = (format == "SigMF");
 
-    if (rx->start_evidence_recording(cfg) != receiver::STATUS_OK)
+    squelch_audio_config acfg;
+    acfg.directory = m_settings->value("audio/rec_dir", QDir::homePath()).toString().toStdString();
+    acfg.prefix = "gqrx_rec";
+    acfg.sample_rate_hz = 48000.0;
+    acfg.center_freq_hz = cfg.center_freq_hz;
+    acfg.threshold_dbfs = cfg.threshold_db;
+    if (acfg.threshold_dbfs <= -149.0f)
+        acfg.threshold_dbfs = -30.0f;
+    acfg.trigger_ms = 10.0;
+    acfg.pre_roll_ms = 1000.0;
+    acfg.hangover_ms = 1000.0;
+    acfg.min_event_ms = 20.0;
+    acfg.max_segment_s = 10.0;
+    acfg.min_gap_ms = 500.0;
+    acfg.max_total_bytes = 256ULL * 1024ULL * 1024ULL;
+
+    if (rx->start_recording(cfg, acfg) != receiver::STATUS_OK)
     {
         iq_tool->cancelEvidence();
         ui->statusBar->showMessage(tr("Error starting evidence recorder"), 5000);
@@ -1776,7 +1792,7 @@ void MainWindow::startEvidenceRecording(const QString& recdir, const QString& fo
 void MainWindow::stopEvidenceRecording()
 {
     qDebug() << __func__;
-    rx->stop_evidence_recording();
+    rx->stop_recording();
     ui->statusBar->showMessage(tr("Evidence recording stopped"), 5000);
 }
 

@@ -24,6 +24,7 @@
 #define SQUELCH_IQ_SINK_H
 
 #include <gnuradio/sync_block.h>
+#include "recording_trigger.h"
 #include <chrono>
 #include <cstdint>
 #include <fstream>
@@ -102,6 +103,7 @@ public:
     squelch_iq_config get_config() const;
     void set_center_frequency(double freq_hz);
     void set_sample_rate(double rate_hz);
+    void set_trigger(const recording_trigger_sptr &trigger);
 
     void set_enabled(bool enabled);
     bool is_enabled() const;
@@ -123,6 +125,7 @@ private:
     std::string make_filename_locked(const std::string &suffix);
 
     mutable std::mutex d_mutex;
+    recording_trigger_sptr d_trigger;
     squelch_iq_config d_config;
     squelch_iq_stats d_stats;
     state_t d_state = STATE_IDLE;

@@ -117,6 +117,10 @@ receiver::receiver(const std::string input_device,
     iq_swap = make_iq_swap_cc(false);
     dc_corr = make_dc_corr_cc(d_decim_rate, 1.0);
     evidence_sink = make_squelch_iq_sink();
+    audio_sink = make_squelch_audio_sink();
+    recording_trigger = make_recording_trigger();
+    evidence_sink->set_trigger(recording_trigger);
+    audio_sink->set_trigger(recording_trigger);
     iq_fft = make_rx_fft_c(DEFAULT_FFT_SIZE, d_decim_rate, gr::fft::window::WIN_HANN);
 
     audio_fft = make_rx_fft_f(DEFAULT_FFT_SIZE, d_audio_rate, gr::fft::window::WIN_HANN);
@@ -554,6 +558,7 @@ receiver::status receiver::set_rf_freq(double freq_hz)
 {
     d_rf_freq = freq_hz;
     evidence_sink->set_center_frequency(d_rf_freq);
+    audio_sink->set_center_frequency(d_rf_freq);
 
     src->set_center_freq(d_rf_freq);
     // FIXME: read back frequency?
@@ -1271,6 +1276,33 @@ squelch_iq_stats receiver::get_evidence_stats() const
     return evidence_sink->get_stats();
 }
 
+receiver::status receiver::start_recording(const squelch_iq_config &iq,
+                                           const squelch_audio_config &audio)
+{
+    const status iq_status = start_evidence_recording(iq);
+    squelch_audio_config acfg = audio;
+    if (acfg.center_freq_hz <= 0.0)
+        acfg.center_freq_hz = d_rf_freq;
+    audio_sink->set_config(acfg);
+    audio_sink->set_enabled(true);
+    if (iq_status != STATUS_OK)
+        return iq_status;
+    return audio_sink->is_enabled() ? STATUS_OK : STATUS_ERROR;
+}
+
+receiver::status receiver::stop_recording()
+{
+    stop_evidence_recording();
+    audio_sink->set_enabled(false);
+    audio_sink->flush();
+    return STATUS_OK;
+}
+
+squelch_audio_stats receiver::get_audio_recording_stats() const
+{
+    return audio_sink->get_stats();
+}
+
 /** Stop I/Q data recorder. */
 receiver::status receiver::stop_iq_recording()
 {
@@ -1393,6 +1425,8 @@ void receiver::connect_all(rx_chain type)
     // Squelch-gated evidence sink always taps the decimated input so it can
     // be enabled without rebuilding the graph.
     tb->connect(b, 0, evidence_sink, 0);
+    tb->connect(rx, 0, audio_sink, 0);
+    tb->connect(rx, 1, audio_sink, 1);
 
     if (d_recording_iq)
     {
